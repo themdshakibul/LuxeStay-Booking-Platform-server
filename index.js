@@ -1,7 +1,7 @@
 const express = require("express");
 const cors = require("cors");
 const dotenv = require("dotenv");
-const { MongoClient, ServerApiVersion } = require("mongodb");
+const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 dotenv.config();
 
 const port = process.env.PORT;
@@ -87,6 +87,15 @@ async function run() {
           },
         },
       );
+      res.json(result);
+    });
+
+    // delte property
+    app.delete("/api/property/:id", async (req, res) => {
+      const { id } = req.params;
+      const result = await propertiesCollection.deleteOne({
+        _id: new ObjectId(id),
+      });
       res.json(result);
     });
 
