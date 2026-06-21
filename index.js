@@ -54,7 +54,24 @@ async function run() {
     //   res.json(result);
     // });
 
+    
+
     //? started
+    // get all properties
+    app.get("/api/property", async (req, res) => {
+      const result = await propertiesCollection.find({}).toArray();
+      res.json(result);
+    });
+
+    // get single property
+    app.get("/api/property/:id", async (req, res) => {
+      const { id } = req.params;
+      const result = await propertiesCollection.findOne({
+        _id: new ObjectId(id),
+      });
+      res.json(result);
+    });
+
     // get property
     app.get("/api/property/:email", async (req, res) => {
       const { email } = req.params;
