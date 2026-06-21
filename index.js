@@ -23,33 +23,70 @@ async function run() {
   try {
     const db = client.db("rental");
     const ownerCollection = db.collection("owners");
-    const PropertiesCollection = db.collection("properties");
+    const propertiesCollection = db.collection("properties");
     const bookingCollection = db.collection("bookings");
     const paymetnCollection = db.collection("payments");
 
-    app.post("/api/owner", async (req, res) => {
-      const {
-        title,
-        description,
-        location,
-        propertyType,
-        rent,
-        rentType,
-        bedrooms,
-        bathrooms,
-        propertySize,
-        images,
-        amenities,
-        extraFeatures,
-      } = req.body;
+    // create owner
+    // app.post("/api/owner", async (req, res) => {
+    //   const {
+    //     title,
+    //     description,
+    //     location,
+    //     propertyType,
+    //     rent,
+    //     rentType,
+    //     bedrooms,
+    //     bathrooms,
+    //     propertySize,
+    //     images,
+    //     amenities,
+    //     extraFeatures,
+    //   } = req.body;
 
-      const addeddata = {
-        ...req.body,
-        createdAt: new Date(),
-        status: "active",
-      };
+    //   const addeddata = {
+    //     ...req.body,
+    //     createdAt: new Date(),
+    //     status: "active",
+    //   };
 
-      const result = await ownerCollection.insertOne(addeddata);
+    //   const result = await ownerCollection.insertOne(addeddata);
+    //   res.json(result);
+    // });
+
+    //? started
+    // get property
+    app.get("/api/property/:email", async (req, res) => {
+      const { email } = req.params;
+      const result = await propertiesCollection
+        .find({
+          ownerEmail: email,
+        })
+        .toArray();
+      res.json(result);
+    });
+
+    // post property
+    app.post("/api/property", async (req, res) => {
+      const data = req.body;
+      const result = await propertiesCollection.insertOne({
+        ...data,
+      });
+      res.json(result);
+    });
+
+    // update property
+    app.patch("/api/property/:id", async (req, res) => {
+      const { id } = req.params;
+      const updatedData = req.body;
+      const result = await propertiesCollection.updateOne(
+        { _id: new ObjectId(id) },
+        {
+          $set: {
+            ...updatedData,
+          },
+        },
+      );
       res.json(result);
     });
 
