@@ -25,6 +25,7 @@ async function run() {
     const ownerCollection = db.collection("owners");
     const propertiesCollection = db.collection("properties");
     const bookingCollection = db.collection("bookings");
+    const favoritesCollection = db.collection("favorites");
     const paymetnCollection = db.collection("payments");
 
     // create owner
@@ -54,7 +55,11 @@ async function run() {
     //   res.json(result);
     // });
 
-    
+    // features properties
+    app.get("/api/features", async (req, res) => {
+      const result = await propertiesCollection.find().limit(6).toArray();
+      res.json(result);
+    });
 
     //? started
     // get all properties
@@ -115,6 +120,29 @@ async function run() {
       });
       res.json(result);
     });
+
+    // ? favorites new collection add korbo
+    // user favorites
+    app.get("/api/favorites/:email", async (req, res) => {
+      const { email } = req.params;
+      const result = await favoritesCollection
+        .find({
+          email: email,
+        })
+        .toArray();
+      res.json(result);
+    });
+
+    // post favorites
+    app.post("/api/favorites", async (req, res) => {
+      const data = req.body;
+      const result = await favoritesCollection.insertOne({
+        ...data,
+      });
+      res.json(result);
+    });
+
+    
 
     console.log(
       "Pinged your deployment. You successfully connected to MongoDB!",
