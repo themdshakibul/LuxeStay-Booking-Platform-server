@@ -22,38 +22,11 @@ const client = new MongoClient(uri, {
 async function run() {
   try {
     const db = client.db("rental");
-    const ownerCollection = db.collection("owners");
+    // const ownerCollection = db.collection("owners");
     const propertiesCollection = db.collection("properties");
     const bookingCollection = db.collection("bookings");
     const favoritesCollection = db.collection("favorites");
     const paymetnCollection = db.collection("payments");
-
-    // create owner
-    // app.post("/api/owner", async (req, res) => {
-    //   const {
-    //     title,
-    //     description,
-    //     location,
-    //     propertyType,
-    //     rent,
-    //     rentType,
-    //     bedrooms,
-    //     bathrooms,
-    //     propertySize,
-    //     images,
-    //     amenities,
-    //     extraFeatures,
-    //   } = req.body;
-
-    //   const addeddata = {
-    //     ...req.body,
-    //     createdAt: new Date(),
-    //     status: "active",
-    //   };
-
-    //   const result = await ownerCollection.insertOne(addeddata);
-    //   res.json(result);
-    // });
 
     // features properties
     app.get("/api/features", async (req, res) => {
@@ -78,7 +51,7 @@ async function run() {
     });
 
     // get property
-    app.get("/api/property/:email", async (req, res) => {
+    app.get("/api/myproperty/:email", async (req, res) => {
       const { email } = req.params;
       const result = await propertiesCollection
         .find({
@@ -142,7 +115,42 @@ async function run() {
       res.json(result);
     });
 
-    
+    // delete favorites
+    app.delete("/api/favorites/:id", async (req, res) => {
+      const { id } = req.params;
+      const result = await favoritesCollection.deleteOne({
+        _id: new ObjectId(id),
+      });
+      res.json(result);
+    });
+
+    //? Tenents new collection add korbo
+    // get booking
+    app.get("/api/booking/:email", async (req, res) => {
+      const { email } = req.params;
+      const result = await bookingCollection
+        .find({
+          email: email,
+        })
+        .toArray();
+      res.json(result);
+    });
+
+    // post booking
+    app.post("/api/booking", async (req, res) => {
+      const data = req.body;
+
+      const existing = await bookingCollection.findOne({
+        stripeSessionId: data.stripeSessionId,
+      });
+
+      if (existing) {
+        return res.json({ success: false, message: "Already saved" });
+      }
+
+      const result = await bookingCollection.insertOne({ ...data });
+      res.json({ success: true, result });
+    });
 
     console.log(
       "Pinged your deployment. You successfully connected to MongoDB!",
