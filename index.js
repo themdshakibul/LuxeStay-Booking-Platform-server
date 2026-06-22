@@ -109,10 +109,18 @@ async function run() {
     // post favorites
     app.post("/api/favorites", async (req, res) => {
       const data = req.body;
-      const result = await favoritesCollection.insertOne({
-        ...data,
+
+      const existing = await favoritesCollection.findOne({
+        email: data.email,
+        favoritesId: data.favoritesId,
       });
-      res.json(result);
+
+      if (existing) {
+        return res.json({ success: false, message: "Already in favorites" });
+      }
+
+      const result = await favoritesCollection.insertOne({ ...data });
+      res.json({ success: true, result });
     });
 
     // delete favorites
@@ -125,6 +133,20 @@ async function run() {
     });
 
     //? Tenents new collection add korbo
+
+    // get Tenents overview
+    app.get("/api/tenant/stats/:email", async (req, res) => {
+      const { email } = req.params;
+
+      const [bookings, favorites, activeRentals] = await Promise.all([
+        bookingCollection.countDocuments({ email }),
+        favoritesCollection.countDocuments({ email }),
+        bookingCollection.countDocuments({ email, bookingStatus: "Approved" }),
+      ]);
+
+      res.json({ bookings, favorites, activeRentals });
+    });
+
     // get booking
     app.get("/api/booking/:email", async (req, res) => {
       const { email } = req.params;
