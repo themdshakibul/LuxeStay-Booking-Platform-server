@@ -29,6 +29,39 @@ async function run() {
 
     //? Admin
 
+    // Admin overview stats
+    app.get("/api/admin/stats", async (req, res) => {
+      const usersCollection = db.collection("user");
+
+      const [
+        totalUsers,
+        totalOwners,
+        totalProperties,
+        totalBookings,
+        payments,
+      ] = await Promise.all([
+        usersCollection.countDocuments({}),
+        usersCollection.countDocuments({ role: "owner" }),
+        propertiesCollection.countDocuments({}),
+        bookingCollection.countDocuments({}),
+        paymetnCollection.find({}).toArray(),
+      ]);
+
+      res.json({
+        totalUsers,
+        totalOwners,
+        totalProperties,
+        totalBookings,
+        payments,
+      });
+    });
+
+    // all bookings get
+    app.get("/api/admin/bookings", async (req, res) => {
+      const result = await bookingCollection.find({}).toArray();
+      res.json(result);
+    });
+
     // all properties get
     app.get("/api/admin/properties", async (req, res) => {
       const result = await propertiesCollection.find({}).toArray();
@@ -74,7 +107,29 @@ async function run() {
       res.json({ success: true, result });
     });
 
-    // Owner dashboard analyse
+    // ?Owner dashboard analyse
+
+    // Owner all bookings get
+    app.get("/api/owner/bookings/:email", async (req, res) => {
+      const { email } = req.params;
+      const result = await bookingCollection
+        .find({ ownerEmail: email })
+        .toArray();
+      res.json(result);
+    });
+
+    // Booking status update
+    app.patch("/api/owner/bookings/:id/status", async (req, res) => {
+      const { id } = req.params;
+      const { bookingStatus } = req.body;
+      const result = await bookingCollection.updateOne(
+        { _id: new ObjectId(id) },
+        { $set: { bookingStatus } },
+      );
+      res.json({ success: true, result });
+    });
+
+    // owner analyse
     app.get("/api/owner/analyse/:email", async (req, res) => {
       const { email } = req.params;
 
