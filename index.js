@@ -27,6 +27,53 @@ async function run() {
     const favoritesCollection = db.collection("favorites");
     const paymetnCollection = db.collection("payments");
 
+    //? Admin
+
+    // all properties get
+    app.get("/api/admin/properties", async (req, res) => {
+      const result = await propertiesCollection.find({}).toArray();
+      res.json(result);
+    });
+
+    // Property status update (Approve/Reject)
+    app.patch("/api/admin/properties/:id/status", async (req, res) => {
+      const { id } = req.params;
+      const { status, rejectionFeedback } = req.body;
+      const result = await propertiesCollection.updateOne(
+        { _id: new ObjectId(id) },
+        { $set: { status, ...(rejectionFeedback && { rejectionFeedback }) } },
+      );
+      res.json({ success: true, result });
+    });
+
+    // Property delete
+    app.delete("/api/admin/properties/:id", async (req, res) => {
+      const { id } = req.params;
+      const result = await propertiesCollection.deleteOne({
+        _id: new ObjectId(id),
+      });
+      res.json({ success: true, result });
+    });
+
+    // all users get
+    app.get("/api/admin/users", async (req, res) => {
+      const usersCollection = db.collection("user");
+      const result = await usersCollection.find({}).toArray();
+      res.json(result);
+    });
+
+    // Role update
+    app.patch("/api/admin/users/:id/role", async (req, res) => {
+      const { id } = req.params;
+      const { role } = req.body;
+      const usersCollection = db.collection("user");
+      const result = await usersCollection.updateOne(
+        { _id: new ObjectId(id) },
+        { $set: { role } },
+      );
+      res.json({ success: true, result });
+    });
+
     // Owner dashboard analyse
     app.get("/api/owner/analyse/:email", async (req, res) => {
       const { email } = req.params;
