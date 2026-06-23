@@ -22,11 +22,44 @@ const client = new MongoClient(uri, {
 async function run() {
   try {
     const db = client.db("rental");
-    // const ownerCollection = db.collection("owners");
     const propertiesCollection = db.collection("properties");
     const bookingCollection = db.collection("bookings");
     const favoritesCollection = db.collection("favorites");
     const paymetnCollection = db.collection("payments");
+
+    // Owner dashboard analyse
+    app.get("/api/owner/analyse/:email", async (req, res) => {
+      const { email } = req.params;
+
+      const [totalProperties, totalBookings, payments] = await Promise.all([
+        propertiesCollection.countDocuments({ ownerEmail: email }),
+        bookingCollection.countDocuments({ ownerEmail: email }),
+        paymetnCollection.find({ ownerEmail: email }).toArray(),
+      ]);
+
+      const totalEarnings = payments.reduce(
+        (sum, p) => sum + (p.amount || 0),
+        0,
+      );
+
+      res.json({ totalEarnings, totalProperties, totalBookings, payments });
+    });
+
+    //? payments propperties
+    app.post("/api/payment", async (req, res) => {
+      const data = req.body;
+
+      const existing = await paymetnCollection.findOne({
+        stripeSessionId: data.stripeSessionId,
+      });
+
+      if (existing) {
+        return res.json({ success: false, message: "Already saved" });
+      }
+
+      const result = await paymetnCollection.insertOne({ ...data });
+      res.json({ success: true, result });
+    });
 
     // features properties
     app.get("/api/features", async (req, res) => {
