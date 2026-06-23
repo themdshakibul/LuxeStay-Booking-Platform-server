@@ -25,6 +25,7 @@ async function run() {
     const propertiesCollection = db.collection("properties");
     const bookingCollection = db.collection("bookings");
     const favoritesCollection = db.collection("favorites");
+    const reviewCollection = db.collection("reviews");
     const paymetnCollection = db.collection("payments");
 
     //? Admin
@@ -166,6 +167,36 @@ async function run() {
     // features properties
     app.get("/api/features", async (req, res) => {
       const result = await propertiesCollection.find().limit(6).toArray();
+      res.json(result);
+    });
+
+    // Review post
+    app.post("/api/reviews", async (req, res) => {
+      const data = req.body;
+      const result = await reviewCollection.insertOne({
+        ...data,
+        createdAt: new Date(),
+      });
+      res.json({ success: true, result });
+    });
+
+    // Property all reviews get
+    app.get("/api/reviews/:propertyId", async (req, res) => {
+      const { propertyId } = req.params;
+      const result = await reviewCollection
+        .find({ propertyId })
+        .sort({ createdAt: -1 })
+        .toArray();
+      res.json(result);
+    });
+
+    // Tenant reviews get
+    app.get("/api/reviews/user/:email", async (req, res) => {
+      const { email } = req.params;
+      const result = await reviewCollection
+        .find({ email })
+        .sort({ createdAt: -1 })
+        .toArray();
       res.json(result);
     });
 
