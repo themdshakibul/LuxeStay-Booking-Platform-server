@@ -2,6 +2,7 @@ const express = require("express");
 const cors = require("cors");
 const dotenv = require("dotenv");
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
+const { jwtVerify, createRemoteJWKSet } = require("jose-cjs");
 dotenv.config();
 
 const port = process.env.PORT;
@@ -18,6 +19,38 @@ const client = new MongoClient(uri, {
     deprecationErrors: true,
   },
 });
+
+// JWT verify
+const JWKS = createRemoteJWKSet(
+  new URL(`${process.env.BETTER_AUTH_URL}/api/auth/jwks`),
+);
+
+// veryfy token
+
+const verifyToken = async (req, res, next) => {
+  const authHeders = req.headers.authorization;
+  console.log(authHeders);
+
+  if (!authHeders || !authHeders.startsWith("Bearer")) {
+    return res.status(401).json({ success: false, message: "Unauthorized" });
+  }
+
+  const token = authHeders.split(" ")[1];
+  console.log(token);
+
+  if (!token) {
+    return res.status(401).json({ success: false, message: "Unauthorized" });
+  }
+
+  try {
+    const { payload } = await jwtVerify(token, JWKS);
+    console.log(payload);
+    next();
+  } catch (error) {
+    console.log(error);
+    return res.status(401).json({ message: "Unauthorized" });
+  }
+};
 
 async function run() {
   try {
@@ -201,10 +234,90 @@ async function run() {
     });
 
     //? started
-    // get all properties
+
     app.get("/api/property", async (req, res) => {
-      const result = await propertiesCollection.find({}).toArray();
-      res.json(result);
+      try {
+        const {
+          search,
+          propertyType,
+          minPrice,
+          maxPrice,
+          sort,
+          page = 1,
+          limit = 9,
+        } = req.query;
+
+        const pageNum = Number(page);
+        const limitNum = Number(limit);
+
+        const matchStage = {
+          status: { $regex: "^approved$", $options: "i" },
+        };
+
+        if (search) {
+          matchStage.$or = [
+            { title: { $regex: search, $options: "i" } },
+            { location: { $regex: search, $options: "i" } },
+            { description: { $regex: search, $options: "i" } },
+          ];
+        }
+
+        if (propertyType && propertyType !== "All") {
+          matchStage.propertyType = propertyType;
+        }
+
+        const pipeline = [
+          { $match: matchStage },
+          {
+            $addFields: {
+              numericRent: { $toDouble: "$rent" },
+            },
+          },
+        ];
+
+        if (minPrice || maxPrice) {
+          const priceFilter = {};
+          if (minPrice) priceFilter.$gte = Number(minPrice);
+          if (maxPrice) priceFilter.$lte = Number(maxPrice);
+          pipeline.push({ $match: { numericRent: priceFilter } });
+        }
+
+        const sortStage = {};
+        if (sort === "price_asc") sortStage.numericRent = 1;
+        else if (sort === "price_desc") sortStage.numericRent = -1;
+        else sortStage.createdAt = -1;
+
+        pipeline.push({ $sort: sortStage });
+
+        const [result] = await propertiesCollection
+          .aggregate([
+            ...pipeline,
+            {
+              $facet: {
+                data: [
+                  { $skip: (pageNum - 1) * limitNum },
+                  { $limit: limitNum },
+                ],
+                total: [{ $count: "count" }],
+              },
+            },
+          ])
+          .toArray();
+
+        const data = result?.data || [];
+        const total = result?.total[0]?.count || 0;
+        const totalPages = total > 0 ? Math.ceil(total / limitNum) : 1;
+
+        res.json({
+          data,
+          total,
+          totalPages,
+          currentPage: pageNum,
+        });
+      } catch (error) {
+        console.error("Error fetching properties:", error);
+        res.status(500).json({ message: "Server Error" });
+      }
     });
 
     // get single property
@@ -228,7 +341,7 @@ async function run() {
     });
 
     // post property
-    app.post("/api/property", async (req, res) => {
+    app.post("/api/property", verifyToken, async (req, res) => {
       const data = req.body;
       const result = await propertiesCollection.insertOne({
         ...data,
