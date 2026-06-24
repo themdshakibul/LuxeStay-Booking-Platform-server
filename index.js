@@ -31,7 +31,7 @@ const verifyToken = async (req, res, next) => {
   const authHeders = req.headers.authorization;
   console.log(authHeders);
 
-  if (!authHeders || !authHeders.startsWith("Bearer")) {
+  if (!authHeders || !authHeders.startsWith("Bearer ")) {
     return res.status(401).json({ success: false, message: "Unauthorized" });
   }
 
@@ -44,12 +44,33 @@ const verifyToken = async (req, res, next) => {
 
   try {
     const { payload } = await jwtVerify(token, JWKS);
-    console.log(payload);
+    req.user = payload;
+
     next();
   } catch (error) {
     console.log(error);
     return res.status(401).json({ message: "Unauthorized" });
   }
+};
+
+const ownerVerify = async (req, res, next) => {
+  const user = req.user;
+
+  console.log(user);
+
+  if (user.role !== "owner") {
+    return res.status(401).json({ message: "Unauthorized" });
+  }
+  next();
+};
+
+const adminVerify = async (req, res, next) => {
+  const user = req.user;
+
+  if (user.role !== "admin") {
+    return res.status(401).json({ message: "Unauthorized" });
+  }
+  next();
 };
 
 async function run() {
@@ -341,37 +362,48 @@ async function run() {
     });
 
     // post property
-    app.post("/api/property", verifyToken, async (req, res) => {
+    app.post("/api/property", verifyToken, ownerVerify, async (req, res) => {
       const data = req.body;
       const result = await propertiesCollection.insertOne({
         ...data,
+        userId: req.user.id,
       });
       res.json(result);
     });
 
     // update property
-    app.patch("/api/property/:id", async (req, res) => {
-      const { id } = req.params;
-      const updatedData = req.body;
-      const result = await propertiesCollection.updateOne(
-        { _id: new ObjectId(id) },
-        {
-          $set: {
-            ...updatedData,
+    app.patch(
+      "/api/property/:id",
+      verifyToken,
+      ownerVerify,
+      async (req, res) => {
+        const { id } = req.params;
+        const updatedData = req.body;
+        const result = await propertiesCollection.updateOne(
+          { _id: new ObjectId(id) },
+          {
+            $set: {
+              ...updatedData,
+            },
           },
-        },
-      );
-      res.json(result);
-    });
+        );
+        res.json(result);
+      },
+    );
 
     // delte property
-    app.delete("/api/property/:id", async (req, res) => {
-      const { id } = req.params;
-      const result = await propertiesCollection.deleteOne({
-        _id: new ObjectId(id),
-      });
-      res.json(result);
-    });
+    app.delete(
+      "/api/property/:id",
+      verifyToken,
+      ownerVerify,
+      async (req, res) => {
+        const { id } = req.params;
+        const result = await propertiesCollection.deleteOne({
+          _id: new ObjectId(id),
+        });
+        res.json(result);
+      },
+    );
 
     // ? favorites new collection add korbo
     // user favorites
