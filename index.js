@@ -29,7 +29,6 @@ const JWKS = createRemoteJWKSet(
 
 const verifyToken = async (req, res, next) => {
   const authHeders = req.headers.authorization;
-  console.log(authHeders);
 
   if (!authHeders || !authHeders.startsWith("Bearer ")) {
     return res.status(401).json({ success: false, message: "Unauthorized" });
@@ -110,16 +109,26 @@ async function run() {
     });
 
     // all bookings get
-    app.get("/api/admin/bookings", async (req, res) => {
-      const result = await bookingCollection.find({}).toArray();
-      res.json(result);
-    });
+    app.get(
+      "/api/admin/bookings",
+      verifyToken,
+      adminVerify,
+      async (req, res) => {
+        const result = await bookingCollection.find({}).toArray();
+        res.json(result);
+      },
+    );
 
     // all properties get
-    app.get("/api/admin/properties", async (req, res) => {
-      const result = await propertiesCollection.find({}).toArray();
-      res.json(result);
-    });
+    app.get(
+      "/api/admin/properties",
+      verifyToken,
+      adminVerify,
+      async (req, res) => {
+        const result = await propertiesCollection.find({}).toArray();
+        res.json(result);
+      },
+    );
 
     // Property status update (Approve/Reject)
     app.patch(
@@ -152,7 +161,7 @@ async function run() {
     );
 
     // all users get
-    app.get("/api/admin/users", async (req, res) => {
+    app.get("/api/admin/users", verifyToken, adminVerify, async (req, res) => {
       const usersCollection = db.collection("user");
       const result = await usersCollection.find({}).toArray();
       res.json(result);
@@ -178,13 +187,18 @@ async function run() {
     // ?Owner dashboard analyse
 
     // Owner all bookings get
-    app.get("/api/owner/bookings/:email", async (req, res) => {
-      const { email } = req.params;
-      const result = await bookingCollection
-        .find({ ownerEmail: email })
-        .toArray();
-      res.json(result);
-    });
+    app.get(
+      "/api/owner/bookings/:email",
+      verifyToken,
+      ownerVerify,
+      async (req, res) => {
+        const { email } = req.params;
+        const result = await bookingCollection
+          .find({ ownerEmail: email })
+          .toArray();
+        res.json(result);
+      },
+    );
 
     // Booking status update
     app.patch("/api/owner/bookings/:id/status", async (req, res) => {
@@ -198,22 +212,27 @@ async function run() {
     });
 
     // owner analyse
-    app.get("/api/owner/analyse/:email", async (req, res) => {
-      const { email } = req.params;
+    app.get(
+      "/api/owner/analyse/:email",
+      verifyToken,
+      ownerVerify,
+      async (req, res) => {
+        const { email } = req.params;
 
-      const [totalProperties, totalBookings, payments] = await Promise.all([
-        propertiesCollection.countDocuments({ ownerEmail: email }),
-        bookingCollection.countDocuments({ ownerEmail: email }),
-        paymetnCollection.find({ ownerEmail: email }).toArray(),
-      ]);
+        const [totalProperties, totalBookings, payments] = await Promise.all([
+          propertiesCollection.countDocuments({ ownerEmail: email }),
+          bookingCollection.countDocuments({ ownerEmail: email }),
+          paymetnCollection.find({ ownerEmail: email }).toArray(),
+        ]);
 
-      const totalEarnings = payments.reduce(
-        (sum, p) => sum + (p.amount || 0),
-        0,
-      );
+        const totalEarnings = payments.reduce(
+          (sum, p) => sum + (p.amount || 0),
+          0,
+        );
 
-      res.json({ totalEarnings, totalProperties, totalBookings, payments });
-    });
+        res.json({ totalEarnings, totalProperties, totalBookings, payments });
+      },
+    );
 
     //? payments propperties
     app.post("/api/payment", async (req, res) => {
@@ -364,15 +383,20 @@ async function run() {
     });
 
     // get property
-    app.get("/api/myproperty/:email", async (req, res) => {
-      const { email } = req.params;
-      const result = await propertiesCollection
-        .find({
-          ownerEmail: email,
-        })
-        .toArray();
-      res.json(result);
-    });
+    app.get(
+      "/api/myproperty/:email",
+      verifyToken,
+      ownerVerify,
+      async (req, res) => {
+        const { email } = req.params;
+        const result = await propertiesCollection
+          .find({
+            ownerEmail: email,
+          })
+          .toArray();
+        res.json(result);
+      },
+    );
 
     // post property
     app.post("/api/property", verifyToken, ownerVerify, async (req, res) => {
@@ -420,7 +444,7 @@ async function run() {
 
     // ? favorites new collection add korbo
     // user favorites
-    app.get("/api/favorites/:email", async (req, res) => {
+    app.get("/api/favorites/:email", verifyToken, async (req, res) => {
       const { email } = req.params;
       const result = await favoritesCollection
         .find({
@@ -448,7 +472,7 @@ async function run() {
     });
 
     // delete favorites
-    app.delete("/api/favorites/:id", async (req, res) => {
+    app.delete("/api/favorites/:id", verifyToken, async (req, res) => {
       const { id } = req.params;
       const result = await favoritesCollection.deleteOne({
         _id: new ObjectId(id),
@@ -459,7 +483,7 @@ async function run() {
     //? Tenents new collection add korbo
 
     // get Tenents overview
-    app.get("/api/tenant/stats/:email", async (req, res) => {
+    app.get("/api/tenant/stats/:email", verifyToken, async (req, res) => {
       const { email } = req.params;
 
       const [bookings, favorites, activeRentals] = await Promise.all([
@@ -472,7 +496,7 @@ async function run() {
     });
 
     // get booking
-    app.get("/api/booking/:email", async (req, res) => {
+    app.get("/api/booking/:email", verifyToken, async (req, res) => {
       const { email } = req.params;
       const result = await bookingCollection
         .find({
