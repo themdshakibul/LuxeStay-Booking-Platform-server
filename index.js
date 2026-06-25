@@ -56,8 +56,6 @@ const verifyToken = async (req, res, next) => {
 const ownerVerify = async (req, res, next) => {
   const user = req.user;
 
-  console.log(user);
-
   if (user.role !== "owner") {
     return res.status(401).json({ message: "Unauthorized" });
   }
@@ -124,24 +122,34 @@ async function run() {
     });
 
     // Property status update (Approve/Reject)
-    app.patch("/api/admin/properties/:id/status", async (req, res) => {
-      const { id } = req.params;
-      const { status, rejectionFeedback } = req.body;
-      const result = await propertiesCollection.updateOne(
-        { _id: new ObjectId(id) },
-        { $set: { status, ...(rejectionFeedback && { rejectionFeedback }) } },
-      );
-      res.json({ success: true, result });
-    });
+    app.patch(
+      "/api/admin/properties/:id/status",
+      verifyToken,
+      adminVerify,
+      async (req, res) => {
+        const { id } = req.params;
+        const { status, rejectionFeedback } = req.body;
+        const result = await propertiesCollection.updateOne(
+          { _id: new ObjectId(id) },
+          { $set: { status, ...(rejectionFeedback && { rejectionFeedback }) } },
+        );
+        res.json({ success: true, result });
+      },
+    );
 
     // Property delete
-    app.delete("/api/admin/properties/:id", async (req, res) => {
-      const { id } = req.params;
-      const result = await propertiesCollection.deleteOne({
-        _id: new ObjectId(id),
-      });
-      res.json({ success: true, result });
-    });
+    app.delete(
+      "/api/admin/properties/:id",
+      verifyToken,
+      adminVerify,
+      async (req, res) => {
+        const { id } = req.params;
+        const result = await propertiesCollection.deleteOne({
+          _id: new ObjectId(id),
+        });
+        res.json({ success: true, result });
+      },
+    );
 
     // all users get
     app.get("/api/admin/users", async (req, res) => {
@@ -151,16 +159,21 @@ async function run() {
     });
 
     // Role update
-    app.patch("/api/admin/users/:id/role", async (req, res) => {
-      const { id } = req.params;
-      const { role } = req.body;
-      const usersCollection = db.collection("user");
-      const result = await usersCollection.updateOne(
-        { _id: new ObjectId(id) },
-        { $set: { role } },
-      );
-      res.json({ success: true, result });
-    });
+    app.patch(
+      "/api/admin/users/:id/role",
+      verifyToken,
+      adminVerify,
+      async (req, res) => {
+        const { id } = req.params;
+        const { role } = req.body;
+        const usersCollection = db.collection("user");
+        const result = await usersCollection.updateOne(
+          { _id: new ObjectId(id) },
+          { $set: { role } },
+        );
+        res.json({ success: true, result });
+      },
+    );
 
     // ?Owner dashboard analyse
 
@@ -501,3 +514,5 @@ app.get("/", (req, res) => {
 app.listen(port, () => {
   console.log(`welcome to rento-booking-server on port ${port}`);
 });
+
+module.exports = app;
