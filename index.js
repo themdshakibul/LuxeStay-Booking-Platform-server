@@ -35,7 +35,6 @@ const verifyToken = async (req, res, next) => {
   }
 
   const token = authHeders.split(" ")[1];
-  console.log(token);
 
   if (!token) {
     return res.status(401).json({ success: false, message: "Unauthorized" });
@@ -82,7 +81,7 @@ async function run() {
     //? Admin
 
     // Admin overview stats
-    app.get("/api/admin/stats", async (req, res) => {
+    app.get("/api/admin/stats", verifyToken, adminVerify, async (req, res) => {
       const usersCollection = db.collection("user");
 
       const [
@@ -374,7 +373,7 @@ async function run() {
     });
 
     // get single property
-    app.get("/api/property/:id", async (req, res) => {
+    app.get("/api/property/:id", verifyToken, async (req, res) => {
       const { id } = req.params;
       const result = await propertiesCollection.findOne({
         _id: new ObjectId(id),
@@ -455,7 +454,7 @@ async function run() {
     });
 
     // post favorites
-    app.post("/api/favorites", async (req, res) => {
+    app.post("/api/favorites", verifyToken, async (req, res) => {
       const data = req.body;
 
       const existing = await favoritesCollection.findOne({
@@ -507,7 +506,7 @@ async function run() {
     });
 
     // post booking
-    app.post("/api/booking", async (req, res) => {
+    app.post("/api/booking", verifyToken, async (req, res) => {
       const data = req.body;
 
       const existing = await bookingCollection.findOne({
